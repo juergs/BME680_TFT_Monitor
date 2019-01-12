@@ -47,6 +47,7 @@ Using the second SPI port (SPI_2)
  Serial.print("Hello world"); will print via Serial USB (CDC).
  Serial1 prints to hardware USART 1
  Serial2 prints to hardware USART 2
+ http://docs.leaflabs.com/static.leaflabs.com/pub/leaflabs/maple-docs/0.0.12/lang/api/serial.html
 
  Language Index:
  http://docs.leaflabs.com/static.leaflabs.com/pub/leaflabs/maple-docs/0.0.12/language-index.html
@@ -90,7 +91,7 @@ Using the second SPI port (SPI_2)
 *  |  --------------------------------------------------------------- Start-Präamble_1 5A
 */
 
-#define USE_PLOTTER_OUTPUT 1
+//#define USE_PLOTTER_OUTPUT 1
 
 uint16_t temp1 = 0;
 int16_t  temp2 = 0;
@@ -137,11 +138,15 @@ int       d = 0;
 void setup(void) 
 {
     Serial.begin(115200); // For debug
+
+    Serial1.begin(9600);  // BME680-device
+
     tft.begin();
     tft.fillScreen(ILI9341_BLACK);
 
     //--- was 3. 5 is defining landscape mode for 128x160-ST7735 from Sainsmart(!) needs reversed display 
     //--- using BRG-color scheme (stuff added  to library !)
+    //--- using RBG-color scheme now!
     tft.setRotation(5); 
     tft.fillScreen(ILI9341_BLACK);
 
@@ -159,39 +164,33 @@ void setup(void)
     float y = M_SIZE * 125 + 2; 
     Serial.print("Y:"); Serial.println(y);
 
-    
-
     analogMeter(); // Draw analogue meter
     
-
     updateTime = millis(); // Next update time
 }
 //-------------------------------------------------------------------------
 void loop() 
 {
-
     //--- jump to this loop.
     BME_loop();
 
-    if (updateTime <= millis()) 
-    {
-        updateTime = millis() + 35; // Update meter every 35 milliseconds
+    //if (updateTime <= millis()) 
+    //{
+    //    updateTime = millis() + 35; // Update meter every 35 milliseconds
  
-        //--- create a sine wave for testing
-        d += 4; 
-        if (d >= 360) d = 0;
-        value[0] = 50 + 50 * sin((d + 0) * 0.0174532925);
-    
-        //value[0] = random(0,100);
-        //unsigned long tt = millis();
-    
-        plotNeedle(value[0], 0); // It takes between 2 and 14ms to replot the needle with zero delay
-    
-        //Serial.println(millis()-tt);
-    }
+    //    //--- create a sine wave for testing
+    //    d += 4; 
+    //    if (d >= 360) d = 0;
+    //    value[0] = 50 + 50 * sin((d + 0) * 0.0174532925);
+    //
+    //    //value[0] = random(0,100);
+    //    //unsigned long tt = millis();
+
+    //    plotNeedle(value[0], 0); // It takes between 2 and 14ms to replot the needle with zero delay
+   
+    //    //Serial.println(millis()-tt);
+    //}
 }
-
-
 // #########################################################################
 //  Draw the analogue meter on the screen
 // #########################################################################
@@ -279,7 +278,7 @@ void analogMeter()
       switch (i / 25) 
       {
         case -2: tft.drawCentreString("0", x0+4, y0-6, 2); break;
-        case -1: tft.drawCentreString("25", x0+2, y0-6, 2); break;
+        case -1: tft.drawCentreString("125", x0+2, y0-6, 2); break;
         case 0: tft.drawCentreString("250", x0, y0-4, 2); break;
         case 1: tft.drawCentreString("375", x0, y0-6, 2); break;
         case 2: tft.drawCentreString("500", x0-3, y0-12, 2); break;
@@ -302,7 +301,7 @@ void analogMeter()
   
   tft.drawRect(1, M_SIZE*3, M_SIZE*236, M_SIZE*126, ILI9341_BLACK);      // Draw bezel line
 
-  plotNeedle(0, 0); // Put meter needle at 0
+  plotNeedle(0, 0, 0); // Put meter needle at 0
 }
 //-------------------------------------------------------------------------
 // Update needle position
@@ -311,12 +310,12 @@ void analogMeter()
 // Smaller values OK if text not in sweep area, zero for instant movement but
 // does not look realistic... (note: 100 increments for full scale deflection)
 //-------------------------------------------------------------------------
-void plotNeedle(int value, byte ms_delay)
+void plotNeedle(int value,int org_value, byte ms_delay)
 {
   //tft.setTextColor(ILI9341_BLACK , ILI9341_WHITE);
   tft.setTextColor(ILI9341_BLACK );
   char buf[8]; 
-  dtostrf((double) value, 4, 0, buf);
+  dtostrf((double)org_value, 4, 0, buf);
   /*
   Serial.print("buf:   "); Serial.println(buf);
   Serial.print("value: "); Serial.println(value);
@@ -425,7 +424,7 @@ int EMA_function(float alpha, int latest, int stored) {
 //----------------------------------------------------------------------------
 void setupMcuBme680()
 {
-    Serial1.begin(9600);    
+    //Serial1.begin(9600);    
     
     delay(1000);
 
@@ -440,6 +439,7 @@ void setupMcuBme680()
     Serial1.write(0X02);
     Serial1.write(0XFD);
     delay(100);
+    Serial.println("\n\n*** SetupMcuBme680 done.");
 }
 //-------------------------------
 void BME_loop() 
@@ -451,9 +451,10 @@ void BME_loop()
     uint16_t IAQ;
     int16_t  Altitude;
     uint8_t IAQ_accuracy;
-
+    
     while (Serial1.available())
     {
+        //Serial.println("*** Bme680.");
         buf[counter] = (unsigned char) Serial1.read();
 
         if (counter == 0 && buf[0] != 0x5A) return;
@@ -526,24 +527,38 @@ void BME_loop()
 
 #else
                 //--- Ctrl + Shift + M
-                Serial1.print("T:");
-                Serial1.print(Temperature);
-                Serial1.print(" ,H:");
-                Serial1.print(Humidity);
-                Serial1.print(" ,P:");
-                Serial1.print(Pressure / 100);
-                Serial1.print("  ,IAQ:");
-                Serial1.print(IAQ);
-                Serial1.print(" ,G:");
-                Serial1.print(Gas);
-                Serial1.print("  ,A:");
-                Serial1.print(Altitude);
-                Serial1.print("  ,IAQ_accuracy:");
-                Serial1.println(IAQ_accuracy);
+   /*             Serial.print("T:");
+                Serial.print(Temperature);
+                Serial.print(" ,H:");
+                Serial.print(Humidity);
+                Serial.print(" ,P:");
+                Serial.print(Pressure / 100);
+                Serial.print("  ,IAQ:");
+                Serial.print(IAQ);
+                Serial.print(" ,G:");
+                Serial.print(Gas);
+                Serial.print("  ,A:");
+                Serial.print(Altitude);
+                Serial.print("  ,IAQ_accuracy:");
+                Serial.println(IAQ_accuracy);*/
+
+                int IAQ_m = map(EMA_S,0,500,0,100);
+                
+                Serial.print("OUT: "); Serial.print("EMA_S,IAQ,IAQ_m: ");
+                Serial.print(EMA_S); Serial.print(","); Serial.print(IAQ_m); Serial.print(","); Serial.println(IAQ);
+
+                //--- output IAQ to virtual gauge
+                plotNeedle(IAQ_m, IAQ, 0); // It takes between 2 and 14ms to replot the needle with zero delay
+
 #endif 
 
             }
             delay(1000);
+            Serial.println("*** Exit Bme680_loop. (RX)");
+        }
+        else
+        {
+            Serial.println("*** Exit Bme680_loop no RX.");
         }
     }
 }
