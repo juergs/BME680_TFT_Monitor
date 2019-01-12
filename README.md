@@ -1,7 +1,7 @@
 # BME680_TFT_Monitor
 Monitoring IAQ-values with implementation of a ST7735 Sainsmart TFT display (128x160)
 
-Special adapted libraries. Suited for Sainsmart 128x160 TFT-display with reversed coordinates to Adafruits-TFT-displays:
+Specially adapted libraries. Suited for Sainsmart 128x160 TFT-display with reversed coordinates to Adafruits-TFT-displays:
 
 Adafruit_GFX_AS
 Adafruit_ILI9341
