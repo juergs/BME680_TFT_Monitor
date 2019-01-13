@@ -16,6 +16,7 @@ no need for BSEC-stuff:
 ![Maple-TFT_2](https://raw.githubusercontent.com/juergs/BME680_TFT_Monitor/master/Maple-TFT_2.png)
 
 Benefits taken from their valuable work:
+
 [Meteo clock](https://create.arduino.cc/projecthub/edr1924/gorgy-meteo-clock-1bfc49)
 
 [Meter](https://www.instructables.com/id/Arduino-sketch-for-a-retro-analogue-meter-graphic-/)
