@@ -1,6 +1,6 @@
 //**********************************************************
 // Visual Micro is in vMicro>General>Tutorial Mode
-// 
+// https://www.visualmicro.com/page/User-Guide.aspx?doc=Visual-Micro-Menu.html
 //**********************************************************
 /*
  An example analogue meter using a ILI9341 TFT LCD screen
@@ -48,30 +48,38 @@ Using the second SPI port (SPI_2)
  Serial1 prints to hardware USART 1
  Serial2 prints to hardware USART 2
  http://docs.leaflabs.com/static.leaflabs.com/pub/leaflabs/maple-docs/0.0.12/lang/api/serial.html
+ https://github.com/rogerclarkmelbourne/Arduino_STM32/blob/master/STM32F1/libraries/A_STM32_Examples/examples/General/BlinkNcount/BlinkNcount.ino
 
  Language Index:
  http://docs.leaflabs.com/static.leaflabs.com/pub/leaflabs/maple-docs/0.0.12/language-index.html
  
- Alan Senior 23/2/2015
+ Room for improvements:
+ https://github.com/sticilface/Tasker
+ 
+ Binary-Upload:
+ Program BME680_Maple_TFT_Monitor size: 69.976 bytes (used 63% of a 110.592 byte maximum)
+ ...Documents\Arduino\hardware\Arduino_STM32\tools\win\maple_upload.bat COM18 1 1EAF:0003 C:\Users\juergs\AppData\Local\Temp\VMBuilds\BME680~3\ARDUIN~1\Release/BME680~1.BIN
 
+ Credentials:
+ Alan Senior 23/2/2015 & juergs 01/12/2019 enhancements for BME680 aquisition.
+
+ Remarks:
+ ========
  20190112_juergs: Anpassungen und BME680-Implementierung. 
  20190112_juergs: "Adafruit_ILI9341_STM.cpp" changed from BRG to RGB color scheme @setRotation(5)   
-
-
-*/
-
-
-//--- including all necessary stuff. (SPI + GFX_AS)  
+ 20190112_juergs: minor changes overwrite rectangle for textual output inside meter. 
+==============================================================================================================================*/
+//--- including all necessary, also specialized, adapted stuff. (SPI + GFX_AS)  
 #include <Adafruit_ILI9341_STM.h>
 #include <Adafruit_GFX_AS.h>
 #include <SPI.h>
 
 
-//**********************************************************
+//===========================================================================================================================
 //* GY_MCU680 air quality sensor ARDUINO/ESP8266 wit BME680 sensor connected via serial interface  
 //* Author: juergs@fhem 20181230
 //--- https://www.norwegiancreations.com/2016/08/double-exponential-moving-average-filter-speeding-up-the-ema/
-//
+//===========================================================================================================================
 /*  0   1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19
 *  5A 5A 3F 0F 08 0B 11 1E 01 8F 20 00 19 00 01 98 EE FF BA 4D
 *  |  |  |   |  |  | |  |  | |  |  | |  |  | |  |  |   |  |  |
@@ -92,6 +100,7 @@ Using the second SPI port (SPI_2)
 */
 
 //#define USE_PLOTTER_OUTPUT 1
+#define VERBOSE 1 
 
 uint16_t temp1 = 0;
 int16_t  temp2 = 0;
@@ -110,12 +119,15 @@ unsigned char sign = 0;
 #define SPI2_NSS_PIN PB12   //SPI_2 Chip Select pin is PB12. You can change it to the STM32 pin you want.
 #define SPI1_NSS_PIN PA4    //SPI_1 Chip Select pin is PA4. You can change it to the STM32 pin you want.
 
-// These are the connections for the MapleMini to display
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// These are the connections for the MapleMini to tft-display
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define sclk  PA5
 #define mosi  PA7  
 #define cs    PA4   // If cs and dc pin allocations are changed then 
 #define dc    PB0   // comment out #define F_AS_T line in "Adafruit_ILI9341_FAST.h" which is inside "Adafruit_ILI9341_AS" library.
 #define rst   0     // Can alternatively connect this to the Arduino reset
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #define M_SIZE 0.667  //--- Define meter size scale factor for 128x160 instead of 128x240 (basic library setting)
 
@@ -137,14 +149,18 @@ int       d = 0;
 //-------------------------------------------------------------------------
 void setup(void) 
 {
+    //--- using USB - CDC output for debug purpouses
     Serial.begin(115200); // For debug
 
-    Serial1.begin(9600);  // BME680-device
+    //--- using serial1 on Maple ( 2nd of three hardware serial ports ) 
+    //--- for BME680-device "QV-MCUBME680V1" 
+    Serial1.begin(9600);  
 
+    //--- using special tft-lib, included in zip-files in github project 
     tft.begin();
     tft.fillScreen(ILI9341_BLACK);
 
-    //--- was 3. 5 is defining landscape mode for 128x160-ST7735 from Sainsmart(!) needs reversed display 
+    //--- setRotation was originally "3".Now added "5" -feature. Defining landscape mode for 128x160-ST7735 from Sainsmart(!) needs reversed display mode. 
     //--- using BRG-color scheme (stuff added  to library !)
     //--- using RBG-color scheme now!
     tft.setRotation(5); 
@@ -152,16 +168,20 @@ void setup(void)
 
     delay(10); 
 
+    //-- setup device and serial port for continuous output @9600 baud
     setupMcuBme680(); 
 
-    delay(5000);
+    delay(3000);  //--- let arduino ide switch to serial after having flashed binary.
 
-    Serial.println("\n\n*** Setup done.");
+    Serial.println("\n\n*** Setup done. Setting GFX.");
 
-    tft.setTextColor(ILI9341_DARKCYAN);
-    tft.drawRightString("1234", 1, M_SIZE * 125 + 2, 2);
+    //tft.setTextColor(ILI9341_DARKCYAN);
+    //tft.drawRightString("1234", 1, M_SIZE * 125 + 2, 2);
 
-    float y = M_SIZE * 125 + 2; 
+    //--- setup static display text 
+
+
+    float y = M_SIZE * 125 + 2;   // Y:85.37F 0<x<85   
     Serial.print("Y:"); Serial.println(y);
 
     analogMeter(); // Draw analogue meter
@@ -235,7 +255,6 @@ void analogMeter()
         tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_GREEN);
     }
 
-
     //--- yellow zone limits
     if (i >= -15 && i < 0) 
     {
@@ -243,14 +262,14 @@ void analogMeter()
       tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_YELLOW);
     }
 
-    //--- green zone limits
+    //--- orange zone limits
     if (i >= 0 && i < 25) 
     {
       tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_ORANGE);
       tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_ORANGE);
     }
 
-    //--- orange zone limits
+    //--- red zone limits
     if (i >= 25 && i < 50) 
     {
       tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_RED);
@@ -285,7 +304,7 @@ void analogMeter()
       }
     }
 
-    // Now draw the arc of the scale
+    //--- draw the arc of the scale
     sx = cos((i + 5 - 90) * 0.0174532925);
     sy = sin((i + 5 - 90) * 0.0174532925);
     x0 = sx * M_SIZE*100 + M_SIZE*120;
@@ -295,10 +314,11 @@ void analogMeter()
     if (i < 50) tft.drawLine(x0, y0, x1, y1, ILI9341_BLACK);
   }
 
+  //--- textuals
   tft.drawString("IAQ", M_SIZE*(3 + 230 - 40), M_SIZE*(119 - 20), 2);    // Units at bottom right
-
+  //--- meter item
   tft.drawCentreString("IAQ", M_SIZE*120, M_SIZE*75, 4);                 // Comment out to avoid font 4
-  
+  //--- bezel
   tft.drawRect(1, M_SIZE*3, M_SIZE*236, M_SIZE*126, ILI9341_BLACK);      // Draw bezel line
 
   plotNeedle(0, 0, 0); // Put meter needle at 0
@@ -314,36 +334,37 @@ void plotNeedle(int value,int org_value, byte ms_delay)
 {
   //tft.setTextColor(ILI9341_BLACK , ILI9341_WHITE);
   tft.setTextColor(ILI9341_BLACK );
-  char buf[8]; 
-  dtostrf((double)org_value, 4, 0, buf);
+
+  //--- delete from previous drawn letters (int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) 
+  //--- spawning for 3 digits 
+  tft.fillRect(5
+      , 68
+      , 30
+      , 12
+      , ILI9341_WHITE);
+
+  char vbuf[8]; 
+  dtostrf( (double) org_value, 4, 0, vbuf);
   /*
-  Serial.print("buf:   "); Serial.println(buf);
-  Serial.print("value: "); Serial.println(value);
-  Serial.print("YL: "); Serial.println(M_SIZE*(119 - 20));
-  */
-  //tft.setTextColor(ILI9341_WHITE);
-  //tft.drawRightString("  ", 33, M_SIZE*(119 - 20), 2);
-  tft.fillRect( 15
-              , 68
-              , 17
-              , 12
-              , ILI9341_WHITE); 
+      Serial.print("buf:   "); Serial.println(vbuf);
+      Serial.print("value: "); Serial.println(value);
+      Serial.print("YL: "); Serial.println(M_SIZE*(119 - 20));
+  */ 
+  tft.drawRightString(vbuf, 33, M_SIZE*(119 - 20), 2);
 
-
-  //tft.setTextColor(ILI9341_BLACK);
-  tft.drawRightString(buf, 33, M_SIZE*(119 - 20), 2);
-  //tft.drawNumber(value, 20, M_SIZE*(119 - 20), 2);
- 
-  if (value < -10) value = -10; // Limit value to emulate needle end stops
+  //--- limit value to emulate needle end stops
+  if (value < -10) value = -10; 
   if (value > 110) value = 110;
 
-  // Move the needle until new value reached
+  //--- move needle until new value reached
   while (!(value == old_analog)) 
   {
-    if (old_analog < value) old_analog++;
-    else old_analog--;
+    if (old_analog < value) 
+       old_analog++;
+    else 
+       old_analog--;
 
-    if (ms_delay == 0) old_analog = value;  //--- update immediately if delay is 0
+    if (ms_delay == 0) old_analog = value;  //--- update immediately, if delay is 0
 
     float sdeg = map(old_analog, -10, 110, -150, -30); // Map value to angle
     
@@ -351,7 +372,7 @@ void plotNeedle(int value,int org_value, byte ms_delay)
     float sx = cos(sdeg * 0.0174532925);
     float sy = sin(sdeg * 0.0174532925);
 
-    //---calculate x delta of needle start (does not start at pivot point)
+    //--- calculate x delta of needle start (does not start at pivot point)
     float tx = tan((sdeg + 90) * 0.0174532925);
 
     //--- erase old needle image
@@ -441,7 +462,7 @@ void setupMcuBme680()
     delay(100);
     Serial.println("\n\n*** SetupMcuBme680 done.");
 }
-//-------------------------------
+//----------------------------------------------------------------------------
 void BME_loop() 
 {
     float Temperature, Humidity;
@@ -450,11 +471,13 @@ void BME_loop()
     uint32_t Pressure;
     uint16_t IAQ;
     int16_t  Altitude;
-    uint8_t IAQ_accuracy;
+    uint8_t  IAQ_accuracy;
     
     while (Serial1.available())
     {
+#ifdef VERBOSE
         //Serial.println("*** Bme680.");
+#endif 
         buf[counter] = (unsigned char) Serial1.read();
 
         if (counter == 0 && buf[0] != 0x5A) return;
@@ -526,7 +549,7 @@ void BME_loop()
                 Serial.println(EMA_S);
 
 #else
-                //--- Ctrl + Shift + M
+                //--- Ctrl + Shift + M for serial terminal on arduino ide
    /*             Serial.print("T:");
                 Serial.print(Temperature);
                 Serial.print(" ,H:");
@@ -543,10 +566,11 @@ void BME_loop()
                 Serial.println(IAQ_accuracy);*/
 
                 int IAQ_m = map(EMA_S,0,500,0,100);
-                
-                Serial.print("OUT: "); Serial.print("EMA_S,IAQ,IAQ_m: ");
+    #ifdef VERBOSE  
+                serial_timestamp(); 
+                Serial.print(" - "); Serial.print("EMA_S,IAQ,IAQ_m: ");
                 Serial.print(EMA_S); Serial.print(","); Serial.print(IAQ_m); Serial.print(","); Serial.println(IAQ);
-
+    #endif
                 //--- output IAQ to virtual gauge
                 plotNeedle(IAQ_m, IAQ, 0); // It takes between 2 and 14ms to replot the needle with zero delay
 
@@ -554,13 +578,43 @@ void BME_loop()
 
             }
             delay(1000);
-            Serial.println("*** Exit Bme680_loop. (RX)");
+
+#ifdef VERBOSE           
+            //Serial.println("*** Exit Bme680_loop. (RX)");
+#endif
         }
         else
         {
+#ifdef VERBOSE           
             Serial.println("*** Exit Bme680_loop no RX.");
+#endif
         }
     }
+}
+//---------------------------------------------------------------------
+/*!
+* @brief           Capture the system time in microseconds
+* @return          system_current_time    current system timestamp in microseconds
+*/
+int64_t get_timestamp_us()
+{
+    return ((int64_t)millis() * 1000);
+}
+//---------------------------------------------------------------------
+int64_t print_timestamp()
+{
+    return ((int64_t)get_timestamp_us() / 1e6);
+}
+//---------------------------------------------------------------------
+int64_t serial_timestamp()
+{
+    //--- a jumper to GND on D10 does the job, when needed! 
+    /* if (digitalRead(PIN_ENABLE_TIMESTAMP_IN_OUTPUT) == LOW)
+    {*/
+    Serial.print("[");
+    Serial.print(get_timestamp_us() / 1e6);
+    Serial.print("] ");
+    //}
 }
 
 //-------------------------------
