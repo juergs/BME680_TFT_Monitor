@@ -35,3 +35,5 @@ Benefits taken from their valuable work:
  
 Room for improvements:
 https://github.com/sticilface/Tasker
+
+[details in fhem forum](https://forum.fhem.de/index.php/topic,78619.435.html)
