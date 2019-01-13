@@ -3,6 +3,8 @@ Monitoring IAQ-values with implementation of a ST7735 Sainsmart TFT display (128
 
 Specially adapted libraries. Suited for Sainsmart 128x160 TFT-display with reversed coordinates to Adafruits-TFT-displays:
 
+[Bodmer/TFT_ILI9341](https://github.com/Bodmer/TFT_ILI9341)
+
 Adafruit_GFX_AS
 Adafruit_ILI9341
 Adafruit_ILI9341_STM
