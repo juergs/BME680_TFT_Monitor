@@ -17,11 +17,14 @@ no need for BSEC-stuff:
 
 Benefits taken from their valuable work:
 [Meteo clock](https://create.arduino.cc/projecthub/edr1924/gorgy-meteo-clock-1bfc49)
+
 [Meter](https://www.instructables.com/id/Arduino-sketch-for-a-retro-analogue-meter-graphic-/)
+
 [STM32-GFX-Lib](https://github.com/victorpv/Arduino_STM32/tree/master/STM32F1/libraries)
 
 [STM32-Serial](http://docs.leaflabs.com/static.leaflabs.com/pub/leaflabs/maple-docs/0.0.12/lang/api/serial.html)
-[STM32-Serial-Sample](https://github.com/rogerclarkmelbourne/Arduino_STM32/blob/master/STM32F1/libraries/A_STM32_Examples/examples/General/BlinkNcount/BlinkNcount.ino)
+
+[STM32_Serial_Sample](https://github.com/rogerclarkmelbourne/Arduino_STM32/blob/master/STM32F1/libraries/A_STM32_Examples/examples/General/BlinkNcount/BlinkNcount.ino)
 
 [Language Index](http://docs.leaflabs.com/static.leaflabs.com/pub/leaflabs/maple-docs/0.0.12/language-index.html)
  
