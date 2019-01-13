@@ -55,10 +55,15 @@ Using the second SPI port (SPI_2)
  
  Room for improvements:
  https://github.com/sticilface/Tasker
+ https://create.arduino.cc/projecthub/edr1924/gorgy-meteo-clock-1bfc49
  
  Binary-Upload:
  Program BME680_Maple_TFT_Monitor size: 69.976 bytes (used 63% of a 110.592 byte maximum)
  ...Documents\Arduino\hardware\Arduino_STM32\tools\win\maple_upload.bat COM18 1 1EAF:0003 C:\Users\juergs\AppData\Local\Temp\VMBuilds\BME680~3\ARDUIN~1\Release/BME680~1.BIN
+
+ Infos:
+ char tmpPMax[8];
+ sprintf(tmpPMax, "%u.%u", pressureMax / 10, pressureMax % 10 );
 
  Credentials:
  Alan Senior 23/2/2015 & juergs 01/12/2019 enhancements for BME680 aquisition.
@@ -100,7 +105,10 @@ Using the second SPI port (SPI_2)
 */
 
 //#define USE_PLOTTER_OUTPUT 1
-#define VERBOSE 1 
+#define VERBOSE     1 
+#define VERBOSE2    1 
+#define VERBOSE3    1 
+#define IS_TEST     0
 
 uint16_t temp1 = 0;
 int16_t  temp2 = 0;
@@ -114,6 +122,15 @@ uint8_t buf[30];
 unsigned char counter = 0;
 unsigned char sign = 0;
 //int led = 13;
+
+//--- global scope transfers
+uint32_t _gas = 0;
+uint32_t _pressure = 0;
+uint16_t _iaq = 0;
+uint16_t _iaqm = 0; 
+int16_t  _altitude = 0;
+uint8_t  _iaq_accuracy = 0;
+float _temperature = 0.0F;
 
 
 #define SPI2_NSS_PIN PB12   //SPI_2 Chip Select pin is PB12. You can change it to the STM32 pin you want.
@@ -135,6 +152,33 @@ unsigned char sign = 0;
 #define YELLOW 0xFFE0
 #define TFT_WHITE 0xFFFF
 
+// Horizontal Grid lines
+#define grid24HstartpositionXaxis       0
+#define grid24HstartpositionYaxis      15
+#define grid24HlineSpacing             20
+#define grid24HlinePixelSpacing         2
+#define grid24HlinePixelSpacing1H       5
+#define grid24HlinePixelSpacing2H      10
+#define grid24HlinePixelSpacing4H      20
+#define grid24XaxisTicksStart           5
+// Vertical Grid lines
+#define grid24VstartpositionXaxis      10
+#define grid24VstartpositionYaxis      15
+#define grid24VlineSpacing             20
+#define grid24VlinePixelSpacing         2
+#define grid24VlinePixelSpacing10Hpa   20
+#define grid24VlinePixelSpacing5Hpa    10
+
+#define plotLimitH                    130 // graph plotlimit Horizontal 
+#define plotRangeH                    130 // graph plot size Horizontal
+#define plotLimitV                    115 // graph plotlimit Vertical
+#define plotRangeV                    100 // graph plot size Vertical
+#define GRIDCOLOR                     ILI9341_LIGHTGREY
+#define YAXISCOLOR                    ILI9341_GREY  
+#define XAXISCOLOR                    ILI9341_GREY  
+#define BLACK                         ILI9341_BLACK
+#define GREEN                         ILI9341_GREEN
+
 //--- tft object 
 Adafruit_ILI9341_STM tft = Adafruit_ILI9341_STM(cs, dc, rst); // Invoke custom library
 
@@ -146,6 +190,9 @@ int       old_digital = -999;   // Value last displayed
 int       value[6] = {0, 0, 0, 0, 0, 0};
 int       old_value[6] = { -1, -1, -1, -1, -1, -1};
 int       d = 0;
+
+
+
 //-------------------------------------------------------------------------
 void setup(void) 
 {
@@ -166,26 +213,33 @@ void setup(void)
     tft.setRotation(5); 
     tft.fillScreen(ILI9341_BLACK);
 
-    delay(10); 
+    delay(15); 
+
+#if IS_TEST == 1
+    //---experimental
+    testplot(); 
+    delay(10000);
+    tft.fillScreen(ILI9341_BLACK);
+    drawGridLines(); 
+    delay(10000);
+    tft.fillScreen(ILI9341_BLACK);
+    //tft.setTextColor(ILI9341_DARKCYAN);
+    //tft.drawRightString("1234", 1, M_SIZE * 125 + 2, 2);
+    float y = M_SIZE * 125 + 2;   // Y:85.37F 0<x<85   
+    Serial.print("Y:"); Serial.println(y);
+    redSmiley(50, 110);
+#endif
 
     //-- setup device and serial port for continuous output @9600 baud
     setupMcuBme680(); 
 
     delay(3000);  //--- let arduino ide switch to serial after having flashed binary.
 
-    Serial.println("\n\n*** Setup done. Setting GFX.");
-
-    //tft.setTextColor(ILI9341_DARKCYAN);
-    //tft.drawRightString("1234", 1, M_SIZE * 125 + 2, 2);
-
-    //--- setup static display text 
-
-
-    float y = M_SIZE * 125 + 2;   // Y:85.37F 0<x<85   
-    Serial.print("Y:"); Serial.println(y);
-
-    analogMeter(); // Draw analogue meter
+    Serial.println("*** Setup done. Setting GFX.\n");
     
+    analogMeter(); // Draw analogue meter
+    drawLowerPaneText();
+
     updateTime = millis(); // Next update time
 }
 //-------------------------------------------------------------------------
@@ -194,22 +248,23 @@ void loop()
     //--- jump to this loop.
     BME_loop();
 
-    //if (updateTime <= millis()) 
-    //{
-    //    updateTime = millis() + 35; // Update meter every 35 milliseconds
- 
-    //    //--- create a sine wave for testing
-    //    d += 4; 
-    //    if (d >= 360) d = 0;
-    //    value[0] = 50 + 50 * sin((d + 0) * 0.0174532925);
-    //
-    //    //value[0] = random(0,100);
-    //    //unsigned long tt = millis();
+    if (updateTime <= millis()) 
+    {
+        updateTime = millis() + 20;     //--- (35) Update meter every 35 milliseconds, min. 14 ms update time cycle 
 
-    //    plotNeedle(value[0], 0); // It takes between 2 and 14ms to replot the needle with zero delay
+        plotNeedle(_iaqm, _iaq, 0);     //--- It takes between 2 and 14ms to replot the needle with zero delay
+ 
+        //    //--- create a sine wave for testing
+        //    d += 4; 
+        //    if (d >= 360) d = 0;
+        //    value[0] = 50 + 50 * sin((d + 0) * 0.0174532925);
+        //    //--- second test method
+        //    //value[0] = random(0,100);
+        //    //unsigned long tt = millis();
+        //    plotNeedle(value[0], 0); // It takes between 2 and 14ms to replot the needle with zero delay
    
-    //    //Serial.println(millis()-tt);
-    //}
+        //    //Serial.println(millis()-tt);
+    }
 }
 // #########################################################################
 //  Draw the analogue meter on the screen
@@ -571,8 +626,18 @@ void BME_loop()
                 Serial.print(" - "); Serial.print("EMA_S,IAQ,IAQ_m: ");
                 Serial.print(EMA_S); Serial.print(","); Serial.print(IAQ_m); Serial.print(","); Serial.println(IAQ);
     #endif
+
+                _gas = Gas / 10000;
+                _pressure = Pressure / 1000;
+                _iaq = IAQ;
+                _iaqm = IAQ_m; 
+                _altitude = Altitude;
+                _iaq_accuracy = IAQ_accuracy;
+                _temperature = Temperature; 
+
+
                 //--- output IAQ to virtual gauge
-                plotNeedle(IAQ_m, IAQ, 0); // It takes between 2 and 14ms to replot the needle with zero delay
+                //plotNeedle(IAQ_m, IAQ, 0); // It takes between 2 and 14ms to replot the needle with zero delay
 
 #endif 
 
@@ -591,7 +656,7 @@ void BME_loop()
         }
     }
 }
-//---------------------------------------------------------------------
+//-------------------------------------------------------------------------
 /*!
 * @brief           Capture the system time in microseconds
 * @return          system_current_time    current system timestamp in microseconds
@@ -600,13 +665,13 @@ int64_t get_timestamp_us()
 {
     return ((int64_t)millis() * 1000);
 }
-//---------------------------------------------------------------------
+//-------------------------------------------------------------------------
 int64_t print_timestamp()
 {
     return ((int64_t)get_timestamp_us() / 1e6);
 }
-//---------------------------------------------------------------------
-int64_t serial_timestamp()
+//-------------------------------------------------------------------------
+void serial_timestamp()
 {
     //--- a jumper to GND on D10 does the job, when needed! 
     /* if (digitalRead(PIN_ENABLE_TIMESTAMP_IN_OUTPUT) == LOW)
@@ -616,8 +681,182 @@ int64_t serial_timestamp()
     Serial.print("] ");
     //}
 }
+//-------------------------------------------------------------------------
+void testplot()
+{    
 
-//-------------------------------
-//-------------------------------
+    // plot horizontal grid lines on TFT display
+    for (int q = 0; q <= (130) / 2; q++)
+    {
+        tft.drawPixel(q * 2, 15 + (0 * 10), GRIDCOLOR); // +5 line
+        tft.drawPixel(q * 2, 15 + (1 * 10), GRIDCOLOR); // +4 line
+        tft.drawPixel(q * 2, 15 + (2 * 10), GRIDCOLOR); // +3 line
+        tft.drawPixel(q * 2, 15 + (3 * 10), GRIDCOLOR); // +2 line
+        tft.drawPixel(q * 2, 15 + (4 * 10), GRIDCOLOR); // +1 line
+        tft.drawFastHLine(0, 15 + (5 * 10), 130, ILI9341_WHITE); // 0 (solid) line
+        tft.drawPixel(q * 2, 15 + (6 * 10), GRIDCOLOR); // +-1 line
+        tft.drawPixel(q * 2, 15 + (7 * 10), GRIDCOLOR); // +-2 line
+        tft.drawPixel(q * 2, 15 + (8 * 10), GRIDCOLOR); // +-3 line
+        tft.drawPixel(q * 2, 15 + (9 * 10), GRIDCOLOR); // +-4 line
+
+    }
+    // plot vertical grid lines on TFT display
+    for (int q = 0; q <= (plotLimitV - 10) / 2; q++)
+    {
+        tft.drawPixel(10 + (0 * 20), ((15) + (q * 2)), GRIDCOLOR); // -24 line
+        tft.drawPixel(10 + (1 * 20), ((15) + (q * 2)), GRIDCOLOR); // -20 line
+        tft.drawPixel(10 + (2 * 20), ((15) + (q * 2)), GRIDCOLOR); // -16 line
+        tft.drawPixel(10 + (3 * 20), ((15) + (q * 2)), GRIDCOLOR); // -12 line
+        tft.drawPixel(10 + (4 * 20), ((15) + (q * 2)), GRIDCOLOR); // -8 line
+        tft.drawPixel(10 + (5 * 20), ((15) + (q * 2)), GRIDCOLOR); // -4 line
+    }
+}
+//-------------------------------------------------------------------------
+void drawGridLines()
+{
+    int q = 0; 
+    /*-------{ plot horizontal grid lines on TFT display }--------------------*/
+    for (q = 0; q <= (plotLimitH) / grid24HlinePixelSpacing; q++)
+    {
+        tft.drawPixel(q * grid24HlinePixelSpacing, grid24HstartpositionYaxis + (0 * grid24HlineSpacing), GRIDCOLOR);
+        tft.drawPixel(q * grid24HlinePixelSpacing, grid24HstartpositionYaxis + (1 * grid24HlineSpacing), GRIDCOLOR);
+        tft.drawPixel(q * grid24HlinePixelSpacing, grid24HstartpositionYaxis + (2 * grid24HlineSpacing), GRIDCOLOR);
+        tft.drawPixel(q * grid24HlinePixelSpacing, grid24HstartpositionYaxis + (3 * grid24HlineSpacing), GRIDCOLOR);
+        tft.drawPixel(q * grid24HlinePixelSpacing, grid24HstartpositionYaxis + (4 * grid24HlineSpacing), GRIDCOLOR);
+    }
+    /*-------{ plot horizontal grid lines on TFT display }--------------------*/
+    for (q = 0; q <= (plotLimitV - grid24VstartpositionYaxis) / grid24VlinePixelSpacing; q++)
+    {
+        tft.drawPixel(grid24VstartpositionXaxis + (0 * grid24VlineSpacing), ((grid24VstartpositionYaxis)+(q * grid24VlinePixelSpacing)), GRIDCOLOR);
+        tft.drawPixel(grid24VstartpositionXaxis + (1 * grid24VlineSpacing), ((grid24VstartpositionYaxis)+(q * grid24VlinePixelSpacing)), GRIDCOLOR);
+        tft.drawPixel(grid24VstartpositionXaxis + (2 * grid24VlineSpacing), ((grid24VstartpositionYaxis)+(q * grid24VlinePixelSpacing)), GRIDCOLOR);
+        tft.drawPixel(grid24VstartpositionXaxis + (3 * grid24VlineSpacing), ((grid24VstartpositionYaxis)+(q * grid24VlinePixelSpacing)), GRIDCOLOR);
+        tft.drawPixel(grid24VstartpositionXaxis + (4 * grid24VlineSpacing), ((grid24VstartpositionYaxis)+(q * grid24VlinePixelSpacing)), GRIDCOLOR);
+        tft.drawPixel(grid24VstartpositionXaxis + (5 * grid24VlineSpacing), ((grid24VstartpositionYaxis)+(q * grid24VlinePixelSpacing)), GRIDCOLOR);
+    }
+}
+//-------------------------------------------------------------------------
+
+/*-------{ plot grid ticks on TFT display }--------------------*/
+void drawGridTicks()
+{
+    int q = 0;
+    // X axis solid line
+    tft.drawFastHLine(0, plotLimitV, plotLimitH, XAXISCOLOR);
+    // 1 hour ticks
+    for (q = 0; q <= (plotLimitH - grid24XaxisTicksStart) / grid24HlinePixelSpacing1H; q++)
+    {
+        tft.drawPixel(grid24XaxisTicksStart + q * grid24HlinePixelSpacing1H, plotLimitV + 1, XAXISCOLOR);
+    }
+    // 2 hour H ticks
+    for (q = 0; q <= (plotLimitH - grid24XaxisTicksStart) / grid24HlinePixelSpacing2H; q++)
+    {
+        tft.drawPixel(grid24XaxisTicksStart + 5 + q * grid24HlinePixelSpacing4H, plotLimitV + 2, XAXISCOLOR);
+        tft.drawPixel(grid24XaxisTicksStart + 5 + q * grid24HlinePixelSpacing4H, plotLimitV + 3, XAXISCOLOR);
+    }
+
+    // Y axis solid line
+    tft.drawFastVLine(plotLimitH, grid24VstartpositionYaxis, plotLimitV - grid24VstartpositionXaxis, YAXISCOLOR);
+    // 5Hpa V ticks
+    for (q = 0; q <= (plotLimitV - grid24HstartpositionYaxis) / grid24VlinePixelSpacing5Hpa; q++)
+    {
+        tft.drawPixel(plotLimitH + 1, grid24HstartpositionYaxis + (q * grid24VlinePixelSpacing5Hpa), YAXISCOLOR);
+    }
+    // 10Hpa Vticks
+    for (q = 0; q <= (plotLimitV - grid24HstartpositionYaxis) / grid24VlinePixelSpacing10Hpa; q++)
+    {
+        tft.drawPixel(plotLimitH + 2, grid24HstartpositionYaxis + (q * grid24VlinePixelSpacing10Hpa), YAXISCOLOR);
+        tft.drawPixel(plotLimitH + 3, grid24HstartpositionYaxis + (q * grid24VlinePixelSpacing10Hpa), YAXISCOLOR);
+    }
+}
+//-------------------------------------------------------------------------
+void smileyRed(int posX, int posY)
+{
+    // draw smiley
+    tft.fillCircle(posX, posY, 17, ILI9341_RED);
+    //draw eyes
+    tft.fillCircle(posX - 8, posY - 5, 2, BLACK);
+    tft.fillCircle(posX + 8, posY - 5, 2, BLACK);
+    // draw sad mouth
+    tft.drawFastHLine(posX - 11, posY + 10, 3, BLACK);
+    tft.drawFastHLine(posX + 9, posY + 10, 3, BLACK);
+    tft.drawFastHLine(posX - 11, posY + 9, 3, BLACK);
+    tft.drawFastHLine(posX + 9, posY + 9, 3, BLACK);
+    tft.drawFastHLine(posX - 10, posY + 8, 3, BLACK);
+    tft.drawFastHLine(posX + 8, posY + 8, 3, BLACK);
+    tft.drawFastHLine(posX - 10, posY + 7, 3, BLACK);
+    tft.drawFastHLine(posX + 8, posY + 7, 3, BLACK);
+    tft.drawFastHLine(posX - 8, posY + 6, 3, BLACK);
+    tft.drawFastHLine(posX + 6, posY + 6, 3, BLACK);
+    tft.drawFastHLine(posX - 8, posY + 5, 3, BLACK);
+    tft.drawFastHLine(posX + 6, posY + 5, 3, BLACK);
+    tft.drawFastHLine(posX - 6, posY + 4, 3, BLACK);
+    tft.drawFastHLine(posX + 4, posY + 4, 3, BLACK);
+    tft.drawFastHLine(posX - 6, posY + 3, 13, BLACK);
+    tft.drawFastHLine(posX - 4, posY + 2, 9, BLACK);
+}
+//-------------------------------------------------------------------------
+void smileyYellow(int posX, int posY)
+{
+    // draw smiley
+    tft.fillCircle(posX, posY, 17, ILI9341_YELLOW);
+    //draw eyes
+    tft.fillCircle(posX - 8, posY - 5, 2, ILI9341_BLACK);
+    tft.fillCircle(posX + 8, posY - 5, 2, ILI9341_BLACK);
+    // draw straight mouth
+    tft.drawFastHLine(19, 111, 19, ILI9341_BLACK);
+    tft.drawFastHLine(19, 112, 19, ILI9341_BLACK);
+
+}
+//-------------------------------------------------------------------------
+void smileyGreen(int posX, int posY)
+{
+    // draw smiley
+    tft.fillCircle(posX, posY, 17, ILI9341_GREEN);
+    //draw eyes
+    tft.fillCircle(posX - 8, posY - 5, 2, ILI9341_BLACK);
+    tft.fillCircle(posX + 8, posY - 5, 2, ILI9341_BLACK);
+    // draw smiley mouth
+    tft.drawFastHLine(posX - 11, posY + 2, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX + 9, posY + 2, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 11, posY + 3, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX + 9, posY + 3, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 10, posY + 4, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX + 8, posY + 4, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 10, posY + 5, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX + 8, posY + 5, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 8, posY + 6, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX + 6, posY + 6, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 8, posY + 7, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX + 6, posY + 7, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 6, posY + 8, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX + 4, posY + 8, 3, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 6, posY + 9, 13, ILI9341_BLACK);
+    tft.drawFastHLine(posX - 4, posY + 10, 9, ILI9341_BLACK);
+
+}
+//-------------------------------------------------------------------------
+void drawLowerPaneText()
+{
+    #define FONT2_CHAR_DISTANCE_Y    15  
+    #define FONT2_CHAR_DISTANCE_X    7
+
+    //--- setup static display text     
+    float lower_pane_start_y = M_SIZE * 125.0F;
+
+    tft.setTextColor(ILI9341_GREY);
+    //--- 1st row
+    tft.drawRightString("Temp:", 1,   lower_pane_start_y + 2, 2);
+    tft.drawCentreString("Alt:", 70,   lower_pane_start_y + 2, 2);
+    //--- 2nd row
+    tft.drawRightString("Press:", 1,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawCentreString("Acc:", 70 ,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    //--- 3nd row
+    tft.drawRightString("IAQ:", 1   , lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
+    tft.drawCentreString("IAQ_m:", 70, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
+}
+//-------------------------------------------------------------------------
+// <eof>
+//-------------------------------------------------------------------------
 
 
