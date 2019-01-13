@@ -28,6 +28,8 @@ Benefits taken from their valuable work:
 [STM32_Serial_Sample](https://github.com/rogerclarkmelbourne/Arduino_STM32/blob/master/STM32F1/libraries/A_STM32_Examples/examples/General/BlinkNcount/BlinkNcount.ino)
 
 [Language Index](http://docs.leaflabs.com/static.leaflabs.com/pub/leaflabs/maple-docs/0.0.12/language-index.html)
+
+[Effective Smoothing](https://www.norwegiancreations.com/2016/08/double-exponential-moving-average-filter-speeding-up-the-ema/)
  
 Room for improvements:
 https://github.com/sticilface/Tasker
