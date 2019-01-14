@@ -190,6 +190,7 @@ int       old_digital = -999;   // Value last displayed
 int       value[6] = {0, 0, 0, 0, 0, 0};
 int       old_value[6] = { -1, -1, -1, -1, -1, -1};
 int       d = 0;
+bool      first_time_exlude = true; 
 
 
 
@@ -237,10 +238,14 @@ void setup(void)
 
     Serial.println("*** Setup done. Setting GFX.\n");
     
-    analogMeter(); // Draw analogue meter
+    //--- draw analogue meter
+    analogMeter(); 
+
+    //--- lower pane data labels
     drawLowerPaneText();
 
-    updateTime = millis(); // Next update time
+    //--- next update time
+    updateTime = millis(); 
 }
 //-------------------------------------------------------------------------
 void loop() 
@@ -376,7 +381,11 @@ void analogMeter()
   //--- bezel
   tft.drawRect(1, M_SIZE*3, M_SIZE*236, M_SIZE*126, ILI9341_BLACK);      // Draw bezel line
 
-  plotNeedle(0, 0, 0); // Put meter needle at 0
+  
+  //Serial.readStringUntil('/n'); 
+
+
+  //plotNeedle(0, 0, 0); // Put meter needle at 0
 }
 //-------------------------------------------------------------------------
 // Update needle position
@@ -400,12 +409,14 @@ void plotNeedle(int value,int org_value, byte ms_delay)
 
   char vbuf[8]; 
   dtostrf( (double) org_value, 4, 0, vbuf);
+  tft.drawRightString(vbuf, 33, M_SIZE*(119 - 20), 2);
+
   /*
       Serial.print("buf:   "); Serial.println(vbuf);
       Serial.print("value: "); Serial.println(value);
       Serial.print("YL: "); Serial.println(M_SIZE*(119 - 20));
   */ 
-  tft.drawRightString(vbuf, 33, M_SIZE*(119 - 20), 2);
+  
 
   //--- limit value to emulate needle end stops
   if (value < -10) value = -10; 
@@ -430,25 +441,35 @@ void plotNeedle(int value,int org_value, byte ms_delay)
     //--- calculate x delta of needle start (does not start at pivot point)
     float tx = tan((sdeg + 90) * 0.0174532925);
 
-    //--- erase old needle image
-    tft.drawLine(M_SIZE*(120 + 24 * ltx) - 1
-                , M_SIZE*(150 - 24)
-                , osx - 1
-                , osy
-                , ILI9341_WHITE);
+    if (!first_time_exlude)
+    {
+        //--- erase old needle image
+        tft.drawLine(M_SIZE*(120 + 24 * ltx) - 1
+            , M_SIZE*(150 - 24)
+            , osx - 1
+            , osy
+            , ILI9341_WHITE);
 
-    
-    tft.drawLine(M_SIZE*(120 + 24 * ltx)
-                ,M_SIZE*(150 - 24)
-                , osx
-                , osy
-                , ILI9341_WHITE);
-    
-    tft.drawLine(M_SIZE*(120 + 24 * ltx) + 1
-                , M_SIZE*(150 - 24)
-                , osx + 1
-                , osy
-                , ILI9341_WHITE);
+        //Serial.print("old1:   "); Serial.print(osx - 1); Serial.print(","); Serial.println(osy);
+
+        tft.drawLine(M_SIZE*(120 + 24 * ltx)
+            , M_SIZE*(150 - 24)
+            , osx
+            , osy
+            , ILI9341_WHITE);
+
+        //Serial.print("old2:   "); Serial.print(osx); Serial.print(","); Serial.println(osy);
+
+        tft.drawLine(M_SIZE*(120 + 24 * ltx) + 1
+            , M_SIZE*(150 - 24)
+            , osx + 1
+            , osy
+            , ILI9341_WHITE);
+
+        //Serial.print("old3:   "); Serial.print(osx + 1); Serial.print(","); Serial.println(osy);
+    }
+    //--- der erste Wert ist falsch, deshalb erst ab dem Zweiten anzeigen 
+    first_time_exlude = false;
 
     //--- re-plot text under needle
     tft.setTextColor(ILI9341_BLACK, ILI9341_WHITE);
@@ -623,20 +644,20 @@ void BME_loop()
                 int IAQ_m = map(EMA_S,0,500,0,100);
     #ifdef VERBOSE  
                 serial_timestamp(); 
-                Serial.print(" - "); Serial.print("EMA_S,IAQ,IAQ_m: ");
-                Serial.print(EMA_S); Serial.print(","); Serial.print(IAQ_m); Serial.print(","); Serial.println(IAQ);
+                Serial.print(" - "); Serial.print("EMA_S, IAQ, IAQ_m:   ");
+                Serial.print(EMA_S); Serial.print("   "); Serial.print(IAQ); Serial.print("   "); Serial.println(IAQ_m);
     #endif
 
                 _gas = Gas / 10000;
                 _pressure = Pressure / 1000;
                 _iaq = IAQ;
-                _iaqm = IAQ_m; 
+                _iaqm = IAQ_m; // mapped value to meter 
                 _altitude = Altitude;
                 _iaq_accuracy = IAQ_accuracy;
                 _temperature = Temperature; 
 
 
-                //--- output IAQ to virtual gauge
+                //--- output IAQ to virtual gauge. Not here, do it by transfered global values in loop function, because display update timing issues!
                 //plotNeedle(IAQ_m, IAQ, 0); // It takes between 2 and 14ms to replot the needle with zero delay
 
 #endif 
