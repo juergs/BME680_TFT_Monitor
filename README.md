@@ -19,6 +19,8 @@ no need for BSEC-stuff:
 
 ![Maple-TFT_3](https://raw.githubusercontent.com/juergs/BME680_TFT_Monitor/master/Maple-TFT_3.png)
 
+![Maple-TFT_4](https://raw.githubusercontent.com/juergs/BME680_TFT_Monitor/master/Maple-TFT_4.png)
+
 Benefits taken from their valuable work:
 
 |               |               |       |
