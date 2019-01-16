@@ -133,6 +133,7 @@ uint16_t _iaqm = 0;
 int16_t  _altitude = 0;
 uint8_t  _iaq_accuracy = 0;
 float _temperature = 0.0F;
+float _hum = 0; 
 
 
 #define SPI2_NSS_PIN PB12   //SPI_2 Chip Select pin is PB12. You can change it to the STM32 pin you want.
@@ -659,6 +660,7 @@ void BME_loop()
                 _altitude = Altitude;
                 _iaq_accuracy = IAQ_accuracy;
                 _temperature = Temperature; 
+                _hum = Humidity; 
 
 
                 //--- output IAQ to virtual gauge. Not here, do it by transfered global values in loop function, because display update timing issues!
@@ -878,7 +880,7 @@ void drawLowerPaneText()
     tft.drawCentreString("Acc:", 100 ,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
     //--- 3nd row
     tft.drawRightString("IAQ:", 1   , lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
-    tft.drawCentreString("IAQm:", 100, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
+    tft.drawCentreString("HUM:", 100, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
 }
 //-------------------------------------------------------------------------
 void updateLowerPaneValues()
@@ -903,7 +905,7 @@ void updateLowerPaneValues()
 
     tft.drawNumber(_altitude, 135, lower_pane_start_y + 2, 2);
     tft.drawNumber(_iaq_accuracy, 135, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
-    tft.drawNumber(_iaqm, 135, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
+    tft.drawFloat(_hum,0, 135, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
 }
 //-------------------------------------------------------------------------
 // <eof>
