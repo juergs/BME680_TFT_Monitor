@@ -56,6 +56,8 @@ Using the second SPI port (SPI_2)
  Room for improvements:
  https://github.com/sticilface/Tasker
  https://create.arduino.cc/projecthub/edr1924/gorgy-meteo-clock-1bfc49
+ //#include "RotaryEncoder.h"    // smallest and best rotary lib I have seen...
+ // https://code.google.com/p/arduino-rotary-encoder-with-velocity/
  
  Binary-Upload:
  Program BME680_Maple_TFT_Monitor size: 69.976 bytes (used 63% of a 110.592 byte maximum)
@@ -258,6 +260,8 @@ void loop()
         updateTime = millis() + 20;     //--- (35) Update meter every 35 milliseconds, min. 14 ms update time cycle 
 
         plotNeedle(_iaqm, _iaq, 0);     //--- It takes between 2 and 14ms to replot the needle with zero delay
+
+        updateLowerPaneValues(); 
  
         //    //--- create a sine wave for testing
         //    d += 4; 
@@ -868,13 +872,38 @@ void drawLowerPaneText()
     tft.setTextColor(ILI9341_GREY);
     //--- 1st row
     tft.drawRightString("Temp:", 1,   lower_pane_start_y + 2, 2);
-    tft.drawCentreString("Alt:", 70,   lower_pane_start_y + 2, 2);
+    tft.drawCentreString("Alt:", 100,   lower_pane_start_y + 2, 2);
     //--- 2nd row
     tft.drawRightString("Press:", 1,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
-    tft.drawCentreString("Acc:", 70 ,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawCentreString("Acc:", 100 ,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
     //--- 3nd row
     tft.drawRightString("IAQ:", 1   , lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
-    tft.drawCentreString("IAQ_m:", 70, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
+    tft.drawCentreString("IAQm:", 100, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
+}
+//-------------------------------------------------------------------------
+void updateLowerPaneValues()
+{
+
+    #define FONT2_CHAR_DISTANCE_Y    15  
+    #define FONT2_CHAR_DISTANCE_X    7
+
+
+    //--- we have three rows in lower pane 
+
+    //--- setup static display text     
+    float lower_pane_start_y = M_SIZE * 125.0F;
+
+    tft.setTextColor(ILI9341_GREENYELLOW, ILI9341_BLACK);
+
+    //--- delete space for new numbers before!
+    //tft.drawNumber(_temperature, 50, lower_pane_start_y +2, 2); 
+    tft.drawFloat (_temperature,1, 50, lower_pane_start_y + 2, 2);
+    tft.drawNumber(_pressure *10, 50, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawNumber(_iaq, 50, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1 , 2);
+
+    tft.drawNumber(_altitude, 135, lower_pane_start_y + 2, 2);
+    tft.drawNumber(_iaq_accuracy, 135, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawNumber(_iaqm, 135, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
 }
 //-------------------------------------------------------------------------
 // <eof>
