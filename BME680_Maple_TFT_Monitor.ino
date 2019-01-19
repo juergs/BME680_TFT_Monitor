@@ -67,6 +67,10 @@ Using the second SPI port (SPI_2)
  char tmpPMax[8];
  sprintf(tmpPMax, "%u.%u", pressureMax / 10, pressureMax % 10 );
 
+ ESP8266-Strings: https://arduino-esp8266.readthedocs.io/en/latest/PROGMEM.html
+
+ Serial.printf_P( PSTR("This is an inline string using printf %s"), "hello");
+
  Credentials:
  Alan Senior 23/2/2015 & juergs 01/12/2019 enhancements for BME680 aquisition.
 
@@ -344,7 +348,7 @@ void analogMeter()
     //--- short scale tick length
     if (i % 25 != 0) tl = 8;
 
-    //--- recalculate coords incase tick lenght changed
+    //--- recalculate coords incase tick length changed
     x0 = sx * (M_SIZE*100 + tl) + M_SIZE*120;
     y0 = sy * (M_SIZE*100 + tl) + M_SIZE*150;
     x1 = sx * M_SIZE*100 + M_SIZE*120;
@@ -363,9 +367,9 @@ void analogMeter()
       {
         case -2: tft.drawCentreString("0", x0+4, y0-6, 2); break;
         case -1: tft.drawCentreString("125", x0+2, y0-6, 2); break;
-        case 0: tft.drawCentreString("250", x0, y0-4, 2); break;
-        case 1: tft.drawCentreString("375", x0, y0-6, 2); break;
-        case 2: tft.drawCentreString("500", x0-3, y0-12, 2); break;
+        case 0:  tft.drawCentreString("250", x0, y0-4, 2); break;
+        case 1:  tft.drawCentreString("375", x0, y0-6, 2); break;
+        case 2:  tft.drawCentreString("500", x0-3, y0-12, 2); break;
       }
     }
 
@@ -422,7 +426,6 @@ void plotNeedle(int value,int org_value, byte ms_delay)
       Serial.print("YL: "); Serial.println(M_SIZE*(119 - 20));
   */ 
   
-
   //--- limit value to emulate needle end stops
   if (value < -10) value = -10; 
   if (value > 110) value = 110;
@@ -517,19 +520,16 @@ void plotNeedle(int value,int org_value, byte ms_delay)
     delay(ms_delay);
   }
 }
-
-
 //----------------------------------------------------------------------------
-int EMA_function(float alpha, int latest, int stored) {
+int EMA_function(float alpha, int latest, int stored) 
+{
     return round(alpha*latest) + round((1 - alpha)*stored);
 }
 //----------------------------------------------------------------------------
 void setupMcuBme680()
 {
-    //Serial1.begin(9600);    
-    
-    delay(1000);
-
+    //Serial1.begin(9600);        
+    delay(1000); //--- let ide settle serial port
     Serial1.write(0XA5);
     Serial1.write(0X55);
     Serial1.write(0X3F);
@@ -556,9 +556,10 @@ void BME_loop()
     
     while (Serial1.available())
     {
-#ifdef VERBOSE
-        //Serial.println("*** Bme680.");
-#endif 
+        #ifdef VERBOSE
+            //Serial.println("*** Bme680.");
+        #endif
+
         buf[counter] = (unsigned char) Serial1.read();
 
         if (counter == 0 && buf[0] != 0x5A) return;
@@ -631,7 +632,7 @@ void BME_loop()
 
 #else
                 //--- Ctrl + Shift + M for serial terminal on arduino ide
-   /*             Serial.print("T:");
+                Serial.print("T:");
                 Serial.print(Temperature);
                 Serial.print(" ,H:");
                 Serial.print(Humidity);
@@ -644,7 +645,7 @@ void BME_loop()
                 Serial.print("  ,A:");
                 Serial.print(Altitude);
                 Serial.print("  ,IAQ_accuracy:");
-                Serial.println(IAQ_accuracy);*/
+                Serial.println(IAQ_accuracy);
 
                 int IAQ_m = map(EMA_S,0,500,0,100);
     #ifdef VERBOSE  
@@ -654,7 +655,10 @@ void BME_loop()
     #endif
 
                 _gas = Gas / 10000;
-                _pressure = Pressure / 1000;
+                _pressure = Pressure / 100;
+
+                //Serial.print("P:");Serial.print(Pressure); Serial.print("  "); Serial.print(Pressure/100); Serial.print("  "); Serial.println((float)Pressure/1000.0F);
+
                 _iaq = IAQ;
                 _iaqm = IAQ_m; // mapped value to meter 
                 _altitude = Altitude;
@@ -900,7 +904,7 @@ void updateLowerPaneValues()
     //--- delete space for new numbers before!
     //tft.drawNumber(_temperature, 50, lower_pane_start_y +2, 2); 
     tft.drawFloat (_temperature,1, 50, lower_pane_start_y + 2, 2);
-    tft.drawNumber(_pressure *10, 50, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawNumber(_pressure , 50, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
     tft.drawNumber(_iaq, 50, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1 , 2);
 
     tft.drawNumber(_altitude, 135, lower_pane_start_y + 2, 2);
