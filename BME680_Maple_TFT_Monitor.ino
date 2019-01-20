@@ -111,9 +111,9 @@ Using the second SPI port (SPI_2)
 */
 
 //#define USE_PLOTTER_OUTPUT 1
-#define VERBOSE     1 
-#define VERBOSE2    1 
-#define VERBOSE3    1 
+//#define VERBOSE     1 
+//#define VERBOSE2    1 
+//#define VERBOSE3    1 
 #define IS_TEST     0
 
 uint16_t temp1 = 0;
@@ -198,7 +198,8 @@ int       value[6] = {0, 0, 0, 0, 0, 0};
 int       old_value[6] = { -1, -1, -1, -1, -1, -1};
 int       d = 0;
 bool      first_time_exlude = true; 
-
+bool      refresh_digit_space = false; 
+bool      had_digit_overflow = false; 
 
 
 //-------------------------------------------------------------------------
@@ -631,6 +632,7 @@ void BME_loop()
                 Serial.println(EMA_S);
 
 #else
+    #ifdef VERBOSE2  
                 //--- Ctrl + Shift + M for serial terminal on arduino ide
                 Serial.print("T:");
                 Serial.print(Temperature);
@@ -646,13 +648,15 @@ void BME_loop()
                 Serial.print(Altitude);
                 Serial.print("  ,IAQ_accuracy:");
                 Serial.println(IAQ_accuracy);
+        #endif
 
                 int IAQ_m = map(EMA_S,0,500,0,100);
-    #ifdef VERBOSE  
+        
+        #ifdef VERBOSE2  
                 serial_timestamp(); 
                 Serial.print(" - "); Serial.print("EMA_S, IAQ, IAQ_m:   ");
                 Serial.print(EMA_S); Serial.print("   "); Serial.print(IAQ); Serial.print("   "); Serial.println(IAQ_m);
-    #endif
+        #endif
 
                 _gas = Gas / 10000;
                 _pressure = Pressure / 100;
@@ -807,24 +811,24 @@ void smileyRed(int posX, int posY)
     tft.fillCircle(posX, posY, 17, ILI9341_RED);
     //draw eyes
     tft.fillCircle(posX - 8, posY - 5, 2, BLACK);
-    tft.fillCircle(posX + 8, posY - 5, 2, BLACK);
-    // draw sad mouth
-    tft.drawFastHLine(posX - 11, posY + 10, 3, BLACK);
-    tft.drawFastHLine(posX + 9, posY + 10, 3, BLACK);
-    tft.drawFastHLine(posX - 11, posY + 9, 3, BLACK);
-    tft.drawFastHLine(posX + 9, posY + 9, 3, BLACK);
-    tft.drawFastHLine(posX - 10, posY + 8, 3, BLACK);
-    tft.drawFastHLine(posX + 8, posY + 8, 3, BLACK);
-    tft.drawFastHLine(posX - 10, posY + 7, 3, BLACK);
-    tft.drawFastHLine(posX + 8, posY + 7, 3, BLACK);
-    tft.drawFastHLine(posX - 8, posY + 6, 3, BLACK);
-    tft.drawFastHLine(posX + 6, posY + 6, 3, BLACK);
-    tft.drawFastHLine(posX - 8, posY + 5, 3, BLACK);
-    tft.drawFastHLine(posX + 6, posY + 5, 3, BLACK);
-    tft.drawFastHLine(posX - 6, posY + 4, 3, BLACK);
-    tft.drawFastHLine(posX + 4, posY + 4, 3, BLACK);
-    tft.drawFastHLine(posX - 6, posY + 3, 13, BLACK);
-    tft.drawFastHLine(posX - 4, posY + 2, 9, BLACK);
+tft.fillCircle(posX + 8, posY - 5, 2, BLACK);
+// draw sad mouth
+tft.drawFastHLine(posX - 11, posY + 10, 3, BLACK);
+tft.drawFastHLine(posX + 9, posY + 10, 3, BLACK);
+tft.drawFastHLine(posX - 11, posY + 9, 3, BLACK);
+tft.drawFastHLine(posX + 9, posY + 9, 3, BLACK);
+tft.drawFastHLine(posX - 10, posY + 8, 3, BLACK);
+tft.drawFastHLine(posX + 8, posY + 8, 3, BLACK);
+tft.drawFastHLine(posX - 10, posY + 7, 3, BLACK);
+tft.drawFastHLine(posX + 8, posY + 7, 3, BLACK);
+tft.drawFastHLine(posX - 8, posY + 6, 3, BLACK);
+tft.drawFastHLine(posX + 6, posY + 6, 3, BLACK);
+tft.drawFastHLine(posX - 8, posY + 5, 3, BLACK);
+tft.drawFastHLine(posX + 6, posY + 5, 3, BLACK);
+tft.drawFastHLine(posX - 6, posY + 4, 3, BLACK);
+tft.drawFastHLine(posX + 4, posY + 4, 3, BLACK);
+tft.drawFastHLine(posX - 6, posY + 3, 13, BLACK);
+tft.drawFastHLine(posX - 4, posY + 2, 9, BLACK);
 }
 //-------------------------------------------------------------------------
 void smileyYellow(int posX, int posY)
@@ -869,29 +873,29 @@ void smileyGreen(int posX, int posY)
 //-------------------------------------------------------------------------
 void drawLowerPaneText()
 {
-    #define FONT2_CHAR_DISTANCE_Y    15  
-    #define FONT2_CHAR_DISTANCE_X    7
+#define FONT2_CHAR_DISTANCE_Y    15  
+#define FONT2_CHAR_DISTANCE_X    7
 
     //--- setup static display text     
     float lower_pane_start_y = M_SIZE * 125.0F;
 
     tft.setTextColor(ILI9341_GREY);
     //--- 1st row
-    tft.drawRightString("Temp:", 1,   lower_pane_start_y + 2, 2);
-    tft.drawCentreString("Alt:", 100,   lower_pane_start_y + 2, 2);
+    tft.drawRightString("Temp:", 1, lower_pane_start_y + 2, 2);
+    tft.drawCentreString("Alt:", 100, lower_pane_start_y + 2, 2);
     //--- 2nd row
-    tft.drawRightString("Press:", 1,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
-    tft.drawCentreString("Acc:", 100 ,  lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawRightString("Press:", 1, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawCentreString("Acc:", 100, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
     //--- 3nd row
-    tft.drawRightString("IAQ:", 1   , lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
-    tft.drawCentreString("HUM:", 100, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1, 2);
+    tft.drawRightString("IAQ:", 1, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
+    tft.drawCentreString("HUM:", 100, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
 }
 //-------------------------------------------------------------------------
 void updateLowerPaneValues()
 {
 
-    #define FONT2_CHAR_DISTANCE_Y    15  
-    #define FONT2_CHAR_DISTANCE_X    7
+#define FONT2_CHAR_DISTANCE_Y    15  
+#define FONT2_CHAR_DISTANCE_X    7
 
 
     //--- we have three rows in lower pane 
@@ -903,14 +907,44 @@ void updateLowerPaneValues()
 
     //--- delete space for new numbers before!
     //tft.drawNumber(_temperature, 50, lower_pane_start_y +2, 2); 
-    tft.drawFloat (_temperature,1, 50, lower_pane_start_y + 2, 2);
-    tft.drawNumber(_pressure , 50, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+    tft.drawFloat(_temperature, 1, 50, lower_pane_start_y + 2, 2);
+    tft.drawNumber(_pressure, 50, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+       
+    if (GetDigitsOfLong(_iaq) > 2)
+    {
+        had_digit_overflow = true;        
+    }
+
+    //-- Digitspacce clear from overflow, ovoid flickering.
+    if ((GetDigitsOfLong(_iaq) < 3)  && had_digit_overflow)
+    {
+        tft.drawString("    ", 50, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
+        had_digit_overflow = false; // reset condition
+    }
+            
     tft.drawNumber(_iaq, 50, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y *2)-1 , 2);
 
     tft.drawNumber(_altitude, 135, lower_pane_start_y + 2, 2);
     tft.drawNumber(_iaq_accuracy, 135, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
     tft.drawFloat(_hum,0, 135, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
 }
+
+//-------------------------------------------------------------------------
+// drawnumber has a flaw when number of digits > 2. the string generated moves one digit too far aside.  
+int GetDigitsOfLong(uint16_t number)
+{    
+    int count = 0;
+
+    while (number != 0)
+    {
+        // n = n/10
+        number /= 10;
+        ++count;
+    }
+
+    return count; 
+}
+
 //-------------------------------------------------------------------------
 // <eof>
 //-------------------------------------------------------------------------
