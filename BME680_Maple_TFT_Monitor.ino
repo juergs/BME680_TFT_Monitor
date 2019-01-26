@@ -200,6 +200,7 @@ int       d = 0;
 bool      first_time_exlude = true; 
 bool      refresh_digit_space = false; 
 bool      had_digit_overflow = false; 
+bool      had_digit_press_overflow = false;
 
 
 //-------------------------------------------------------------------------
@@ -811,24 +812,24 @@ void smileyRed(int posX, int posY)
     tft.fillCircle(posX, posY, 17, ILI9341_RED);
     //draw eyes
     tft.fillCircle(posX - 8, posY - 5, 2, BLACK);
-tft.fillCircle(posX + 8, posY - 5, 2, BLACK);
-// draw sad mouth
-tft.drawFastHLine(posX - 11, posY + 10, 3, BLACK);
-tft.drawFastHLine(posX + 9, posY + 10, 3, BLACK);
-tft.drawFastHLine(posX - 11, posY + 9, 3, BLACK);
-tft.drawFastHLine(posX + 9, posY + 9, 3, BLACK);
-tft.drawFastHLine(posX - 10, posY + 8, 3, BLACK);
-tft.drawFastHLine(posX + 8, posY + 8, 3, BLACK);
-tft.drawFastHLine(posX - 10, posY + 7, 3, BLACK);
-tft.drawFastHLine(posX + 8, posY + 7, 3, BLACK);
-tft.drawFastHLine(posX - 8, posY + 6, 3, BLACK);
-tft.drawFastHLine(posX + 6, posY + 6, 3, BLACK);
-tft.drawFastHLine(posX - 8, posY + 5, 3, BLACK);
-tft.drawFastHLine(posX + 6, posY + 5, 3, BLACK);
-tft.drawFastHLine(posX - 6, posY + 4, 3, BLACK);
-tft.drawFastHLine(posX + 4, posY + 4, 3, BLACK);
-tft.drawFastHLine(posX - 6, posY + 3, 13, BLACK);
-tft.drawFastHLine(posX - 4, posY + 2, 9, BLACK);
+    tft.fillCircle(posX + 8, posY - 5, 2, BLACK);
+    // draw sad mouth
+    tft.drawFastHLine(posX - 11, posY + 10, 3, BLACK);
+    tft.drawFastHLine(posX + 9, posY + 10, 3, BLACK);
+    tft.drawFastHLine(posX - 11, posY + 9, 3, BLACK);
+    tft.drawFastHLine(posX + 9, posY + 9, 3, BLACK);
+    tft.drawFastHLine(posX - 10, posY + 8, 3, BLACK);
+    tft.drawFastHLine(posX + 8, posY + 8, 3, BLACK);
+    tft.drawFastHLine(posX - 10, posY + 7, 3, BLACK);
+    tft.drawFastHLine(posX + 8, posY + 7, 3, BLACK);
+    tft.drawFastHLine(posX - 8, posY + 6, 3, BLACK);
+    tft.drawFastHLine(posX + 6, posY + 6, 3, BLACK);
+    tft.drawFastHLine(posX - 8, posY + 5, 3, BLACK);
+    tft.drawFastHLine(posX + 6, posY + 5, 3, BLACK);
+    tft.drawFastHLine(posX - 6, posY + 4, 3, BLACK);
+    tft.drawFastHLine(posX + 4, posY + 4, 3, BLACK);
+    tft.drawFastHLine(posX - 6, posY + 3, 13, BLACK);
+    tft.drawFastHLine(posX - 4, posY + 2, 9, BLACK);
 }
 //-------------------------------------------------------------------------
 void smileyYellow(int posX, int posY)
@@ -908,14 +909,29 @@ void updateLowerPaneValues()
     //--- delete space for new numbers before!
     //tft.drawNumber(_temperature, 50, lower_pane_start_y +2, 2); 
     tft.drawFloat(_temperature, 1, 50, lower_pane_start_y + 2, 2);
+
+    //--- get a better solution for dirty flag 
+    //--- pressure could also have 4 or 3 digits, adjust when changing.
+    if (GetDigitsOfLong(_pressure) > 3)
+    {
+        had_digit_press_overflow = true;
+    }
+    
+    if ((GetDigitsOfLong(_pressure) < 4) && had_digit_press_overflow)
+    {
+        tft.drawString("    ", 50, lower_pane_start_y + +FONT2_CHAR_DISTANCE_Y, 2);        
+        had_digit_press_overflow = false; // reset condition
+    }
+
     tft.drawNumber(_pressure, 50, lower_pane_start_y + FONT2_CHAR_DISTANCE_Y, 2);
+
        
     if (GetDigitsOfLong(_iaq) > 2)
     {
         had_digit_overflow = true;        
     }
 
-    //-- Digitspacce clear from overflow, ovoid flickering.
+    //-- Digits space clear from overflow, ovoid flickering.
     if ((GetDigitsOfLong(_iaq) < 3)  && had_digit_overflow)
     {
         tft.drawString("    ", 50, lower_pane_start_y + (FONT2_CHAR_DISTANCE_Y * 2) - 1, 2);
@@ -936,8 +952,7 @@ int GetDigitsOfLong(uint16_t number)
     int count = 0;
 
     while (number != 0)
-    {
-        // n = n/10
+    { 
         number /= 10;
         ++count;
     }
